@@ -8,25 +8,11 @@ import { config } from "./config";
 
 const app = express();
 
-// Security middleware with development-friendly CSP
-if (config.environment === "development") {
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "blob:"],
-          connectSrc: ["'self'", "ws:", "wss:"],
-        },
-      },
-    })
-  );
-} else {
-  app.use(helmet());
-}
+// Trust proxy - required for rate limiting behind a proxy
+app.set('trust proxy', 1);
 
+// Security middleware
+app.use(helmet());
 app.use(cors(config.cors));
 app.use(rateLimit(config.rateLimit));
 
