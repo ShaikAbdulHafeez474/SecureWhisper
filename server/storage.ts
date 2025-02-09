@@ -1,8 +1,11 @@
 import { users, messages, type User, type InsertUser, type Message, type InsertMessage } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -10,70 +13,59 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   createMessage(message: InsertMessage): Promise<Message>;
   getMessages(visibility: string, domain?: string): Promise<Message[]>;
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private messages: Map<number, Message>;
-  sessionStore: session.SessionStore;
-  currentUserId: number;
-  currentMessageId: number;
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
-    this.messages = new Map();
-    this.currentUserId = 1;
-    this.currentMessageId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, isAdmin: false };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values({ ...insertUser, isAdmin: false })
+      .returning();
     return user;
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
-    const id = this.currentMessageId++;
-    const message: Message = {
-      ...insertMessage,
-      id,
-      createdAt: new Date(),
-    };
-    this.messages.set(id, message);
+    const [message] = await db
+      .insert(messages)
+      .values(insertMessage)
+      .returning();
     return message;
   }
 
   async getMessages(visibility: string, domain?: string): Promise<Message[]> {
-    return Array.from(this.messages.values())
-      .filter((message) => {
-        if (visibility === 'admin') {
-          return message.visibility === 'admin';
-        }
-        if (visibility === 'domain' && domain) {
-          return message.visibility === 'domain' && message.domain === domain;
-        }
-        if (visibility === 'public') {
-          return message.visibility === 'public';
-        }
-        return false;
-      })
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const query = db.select().from(messages);
+
+    if (visibility === 'admin') {
+      query.where(eq(messages.visibility, 'admin'));
+    } else if (visibility === 'domain' && domain) {
+      query.where(eq(messages.visibility, 'domain'))
+        .where(eq(messages.domain, domain));
+    } else if (visibility === 'public') {
+      query.where(eq(messages.visibility, 'public'));
+    }
+
+    return await query.orderBy(messages.createdAt);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
