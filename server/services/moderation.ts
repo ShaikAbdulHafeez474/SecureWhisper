@@ -5,11 +5,26 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Basic list of inappropriate words for fallback
-const inappropriateWords = [
-  "fuck", "shit", "bastard", "bitch", "ass",
-  // Add more words as needed
-];
+// Comprehensive list of inappropriate content patterns
+const inappropriatePatterns = {
+  profanity: [
+    'fuck', 'shit', 'ass', 'bitch', 'bastard', 'cunt', 'dick', 'pussy', 'cock', 'whore',
+    'slut', 'damn', 'piss', 'cock', 'tits', 'titties', 'boobs', 'vagina', 'penis',
+    // Common variations and leetspeak
+    'f[u\*@]ck', 'sh[i\*@]t', 'b[i\*@]tch', 'a[s\$][$s]', 'p[u\*@]ssy',
+    // Numerical substitutions
+    'f4ck', 'sh1t', 'b1tch', '4ss', 'p0rn',
+  ],
+  hate_speech: [
+    // Racial slurs and discriminatory terms
+    'nigger', 'nigga', 'chink', 'spic', 'kike', 'faggot', 'fag', 'dyke',
+    'retard', 'tard', 'negro', 'wetback', 'beaner', 'gook',
+  ],
+  threats: [
+    'kill', 'murder', 'death', 'die', 'suicide', 'rape', 'bomb',
+    'shoot', 'attack', 'terrorist', 'terror',
+  ]
+};
 
 export interface ModerationResult {
   flagged: boolean;
@@ -17,16 +32,37 @@ export interface ModerationResult {
   reason?: string;
 }
 
+function checkPattern(text: string, pattern: string): boolean {
+  // Create a regex that:
+  // 1. Matches word boundaries
+  // 2. Is case insensitive
+  // 3. Handles common letter substitutions
+  const regex = new RegExp(`\\b${pattern}\\b`, 'i');
+  return regex.test(text);
+}
+
 function localModeration(text: string): ModerationResult {
-  const words = text.toLowerCase().split(/\s+/);
-  const foundWords = inappropriateWords.filter(word => 
-    words.some(w => w.includes(word))
-  );
+  const lowerText = text.toLowerCase();
+  const flaggedCategories: string[] = [];
+  const flaggedPatterns: string[] = [];
+
+  // Check each category of inappropriate content
+  for (const [category, patterns] of Object.entries(inappropriatePatterns)) {
+    for (const pattern of patterns) {
+      if (checkPattern(lowerText, pattern)) {
+        flaggedCategories.push(category);
+        flaggedPatterns.push(pattern);
+        break; // Break after finding first match in category
+      }
+    }
+  }
 
   return {
-    flagged: foundWords.length > 0,
-    categories: foundWords.length > 0 ? ['profanity'] : [],
-    reason: foundWords.length > 0 ? `Content contains inappropriate language` : undefined
+    flagged: flaggedCategories.length > 0,
+    categories: [...new Set(flaggedCategories)], // Remove duplicates
+    reason: flaggedCategories.length > 0
+      ? `Content contains inappropriate language (${flaggedCategories.join(', ')})`
+      : undefined
   };
 }
 
