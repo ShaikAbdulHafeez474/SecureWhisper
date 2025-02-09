@@ -11,8 +11,22 @@ const app = express();
 // Trust proxy - required for rate limiting behind a proxy
 app.set('trust proxy', 1);
 
-// Security middleware
-app.use(helmet());
+// Security middleware with development-friendly CSP
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        connectSrc: ["'self'", "ws:", "wss:"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        fontSrc: ["'self'", "data:"],
+      },
+    },
+  })
+);
+
 app.use(cors(config.cors));
 app.use(rateLimit(config.rateLimit));
 
