@@ -23,12 +23,13 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Check content with OpenAI moderation
+      // Perform content moderation
       const moderationResult = await moderateContent(result.data.content);
       if (moderationResult.flagged) {
         return res.status(400).json({ 
           message: "Message contains inappropriate content",
-          details: moderationResult.reason
+          details: moderationResult.reason,
+          categories: moderationResult.categories
         });
       }
 
