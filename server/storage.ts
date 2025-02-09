@@ -1,6 +1,6 @@
 import { users, messages, type User, type InsertUser, type Message, type InsertMessage } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -53,18 +53,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessages(visibility: string, domain?: string): Promise<Message[]> {
-    const query = db.select().from(messages);
+    let conditions = eq(messages.visibility, visibility);
 
-    if (visibility === 'admin') {
-      query.where(eq(messages.visibility, 'admin'));
-    } else if (visibility === 'domain' && domain) {
-      query.where(eq(messages.visibility, 'domain'))
-        .where(eq(messages.domain, domain));
-    } else if (visibility === 'public') {
-      query.where(eq(messages.visibility, 'public'));
+    if (visibility === 'domain' && domain) {
+      conditions = and(
+        eq(messages.visibility, 'domain'),
+        eq(messages.domain, domain)
+      );
     }
 
-    return await query.orderBy(messages.createdAt);
+    const result = await db
+      .select()
+      .from(messages)
+      .where(conditions)
+      .orderBy(messages.createdAt);
+
+    return result;
   }
 }
 

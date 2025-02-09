@@ -1,11 +1,39 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import rateLimit from "express-rate-limit";
+import cors from "cors";
+import helmet from "helmet";
+import { config } from "./config";
 
 const app = express();
+
+// Security middleware with development-friendly CSP
+if (config.environment === "development") {
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "blob:"],
+          connectSrc: ["'self'", "ws:", "wss:"],
+        },
+      },
+    })
+  );
+} else {
+  app.use(helmet());
+}
+
+app.use(cors(config.cors));
+app.use(rateLimit(config.rateLimit));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -39,26 +67,30 @@ app.use((req, res, next) => {
 (async () => {
   const server = registerRoutes(app);
 
+  // Enhanced error handling
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    // Don't expose stack traces in production
+    const error = config.environment === "development"
+      ? { message, stack: err.stack }
+      : { message };
+
+    res.status(status).json(error);
+
+    if (status >= 500) {
+      console.error("[Error]", err);
+    }
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  if (config.environment === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
-  const PORT = 5000;
+  const PORT = Number(process.env.PORT) || 5000;
   server.listen(PORT, "0.0.0.0", () => {
     log(`serving on port ${PORT}`);
   });
