@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { insertMessageSchema } from "@shared/schema";
 import { z } from "zod";
+import { moderateContent } from "./services/moderation";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -22,13 +23,13 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Basic profanity filter
-      const profanityList = ["badword1", "badword2"]; // Expand this list as needed
-      const hasProfanity = profanityList.some(word => 
-        result.data.content.toLowerCase().includes(word)
-      );
-      if (hasProfanity) {
-        return res.status(400).json({ message: "Message contains inappropriate content" });
+      // Check content with OpenAI moderation
+      const moderationResult = await moderateContent(result.data.content);
+      if (moderationResult.flagged) {
+        return res.status(400).json({ 
+          message: "Message contains inappropriate content",
+          details: moderationResult.reason
+        });
       }
 
       const message = await storage.createMessage(result.data);
