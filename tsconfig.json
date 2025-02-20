@@ -1,5 +1,5 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
+  "include": ["client/src/**/*", "shared/**/*", "server/**/*", "vite-env.d.ts"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "incremental": true,
@@ -8,16 +8,21 @@
     "module": "ESNext",
     "strict": true,
     "lib": ["esnext", "dom", "dom.iterable"],
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
     "baseUrl": ".",
-    "types": ["node", "vite/client"],
+    // "types": ["node", "vite/client", "react", "react-dom"],
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
       "@/*": ["./client/src/*"],
       "@shared/*": ["./shared/*"]
     }
   }
 }
+// Root tsconfig.json (Shared for Client and Server)
+// Root tsconfig.json (Shared for Client and Server)

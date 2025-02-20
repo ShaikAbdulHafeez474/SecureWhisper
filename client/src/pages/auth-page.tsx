@@ -57,9 +57,16 @@ export default function AuthPage() {
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
 
+              {/* Login Form */}
               <TabsContent value="login">
                 <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))}>
+                  <form
+                    onSubmit={loginForm.handleSubmit((data) => {
+                      if (loginMutation) {
+                        loginMutation.mutate(data);
+                      }
+                    })}
+                  >
                     <FormField
                       control={loginForm.control}
                       name="username"
@@ -82,17 +89,32 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <Button className="w-full mt-4" disabled={loginMutation.isPending}>
-                      {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+
+                    {/* Show API Errors */}
+                    {loginMutation?.isError && (
+                      <p className="text-red-500 text-sm mt-2">
+                        {(loginMutation.error as Error)?.message}
+                      </p>
+                    )}
+
+                    <Button type="submit" className="w-full mt-4" disabled={loginMutation?.isPending}>
+                      {loginMutation?.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Login
                     </Button>
                   </form>
                 </Form>
               </TabsContent>
 
+              {/* Register Form */}
               <TabsContent value="register">
                 <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))}>
+                  <form
+                    onSubmit={registerForm.handleSubmit((data) => {
+                      if (registerMutation) {
+                        registerMutation.mutate(data);
+                      }
+                    })}
+                  >
                     <FormField
                       control={registerForm.control}
                       name="username"
@@ -126,8 +148,16 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <Button className="w-full mt-4" disabled={registerMutation.isPending}>
-                      {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+
+                    {/* Show API Errors */}
+                    {registerMutation?.isError && (
+                      <p className="text-red-500 text-sm mt-2">
+                        {(registerMutation.error as Error)?.message}
+                      </p>
+                    )}
+
+                    <Button type="submit" className="w-full mt-4" disabled={registerMutation?.isPending}>
+                      {registerMutation?.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Register
                     </Button>
                   </form>
@@ -137,6 +167,8 @@ export default function AuthPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Side Information Section */}
       <div className="hidden lg:flex flex-1 bg-muted items-center justify-center p-12">
         <div className="max-w-lg">
           <h1 className="text-4xl font-bold mb-4">Anonymous Messaging Platform</h1>

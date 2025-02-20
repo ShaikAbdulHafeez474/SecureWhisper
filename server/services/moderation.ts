@@ -1,5 +1,9 @@
 import OpenAI from "openai";
 import { config } from "../config";
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config({ path: './server/.env' });
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -59,7 +63,8 @@ function localModeration(text: string): ModerationResult {
 
   return {
     flagged: flaggedCategories.length > 0,
-    categories: [...new Set(flaggedCategories)], // Remove duplicates
+    categories: [...Array.from(new Set(flaggedCategories))]
+    , // Remove duplicates
     reason: flaggedCategories.length > 0
       ? `Content contains inappropriate language (${flaggedCategories.join(', ')})`
       : undefined

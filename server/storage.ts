@@ -53,20 +53,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessages(visibility: string, domain?: string): Promise<Message[]> {
-    let conditions = eq(messages.visibility, visibility);
-
-    if (visibility === 'domain' && domain) {
-      conditions = and(
-        eq(messages.visibility, 'domain'),
-        eq(messages.domain, domain)
-      );
-    }
-
     const result = await db
       .select()
       .from(messages)
-      .where(conditions)
-      .orderBy(messages.createdAt);
+      .where(
+        visibility === 'domain' && domain
+          ? and(eq(messages.visibility, 'domain'), eq(messages.domain, domain))
+          : eq(messages.visibility, visibility.toLowerCase()) // Ensure consistent case
+      )
+      .orderBy(messages.createdAt ?? new Date(0)); // Ensure ordering
+
+    console.log("Fetched messages:", result); // Debugging
 
     return result;
   }

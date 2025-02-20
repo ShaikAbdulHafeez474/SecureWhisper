@@ -3,7 +3,7 @@ import { z } from "zod";
 const envSchema = z.object({
   DATABASE_URL: z.string(),
   NODE_ENV: z.enum(["development", "production"]).default("development"),
-  REPL_ID: z.string(),
+  SESSION_SECRET: z.string(),
 });
 
 // Validate environment variables
@@ -15,7 +15,7 @@ export const config = {
   },
   environment: env.NODE_ENV,
   session: {
-    secret: env.REPL_ID,
+    secret: env.SESSION_SECRET,
   },
   cors: {
     origin: env.NODE_ENV === "development" ? "*" : process.env.ALLOWED_ORIGINS?.split(",") || [],
