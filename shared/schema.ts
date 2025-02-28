@@ -12,6 +12,7 @@ export const users = pgTable("users", {
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   visibility: text("visibility").notNull(), // 'admin', 'domain', 'public'
   domain: text("domain"),
@@ -25,6 +26,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 export const insertMessageSchema = createInsertSchema(messages).pick({
+  userId: true,
   content: true,
   visibility: true,
   domain: true,
